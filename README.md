@@ -1,1 +1,1 @@
-# react-webpack-web3-setup
+# eth-staking-dapp

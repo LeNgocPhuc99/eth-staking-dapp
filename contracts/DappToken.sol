@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.4.22 <0.9.0;
 
-contract AsuraToken {
-    string public name = "Asura Token";
-    string public symbol = "ASU";
+contract DappToken {
+    string public name = "Dapp Token";
+    string public symbol = "DAPP";
     uint256 public totalSupply = 1000000000000000000000000;
     uint8 public decimal = 18;
 
@@ -14,8 +14,8 @@ contract AsuraToken {
         uint256 _value
     );
 
-    mapping(address => uint256) balanceOf;
-    mapping(address => mapping(address => uint256)) allowance;
+    mapping(address => uint256) public balanceOf;
+    mapping(address => mapping(address => uint256)) public allowance;
 
     constructor() {
         balanceOf[msg.sender] = totalSupply;

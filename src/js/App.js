@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { Spinner } from "react-bootstrap";
 import Web3 from "web3";
 
 import DaiToken from "../abis/DaiToken.json";
@@ -9,6 +10,7 @@ import MainContent from "./components/MainContent";
 import DappNavar from "./components/DappNavbar";
 
 function App() {
+  const [loading, setLoading] = useState(true);
   const [account, setAccount] = useState();
   const [daiToken, setDaiToken] = useState();
   const [dappToken, setDappToken] = useState();
@@ -88,9 +90,22 @@ function App() {
     } else if (!window.web3) {
       window.alert("Non-Ethereum browser detected.");
     }
+    setLoading(false);
+  };
+
+  const reloadData = async () => {
+    setLoading(true);
+    let _daiBalance = await daiToken.methods.balanceOf(account).call();
+    setDaiTokenBalance(Web3.utils.fromWei(_daiBalance.toString()));
+    let _stakingBalance = await tokenFarm.methods
+      .stakingBalance(account)
+      .call();
+    setStakingBalance(Web3.utils.fromWei(_stakingBalance.toString()));
+    setLoading(false);
   };
 
   const stakeTokens = (_amount) => {
+    setLoading(true);
     daiToken.methods
       .approve(tokenFarm._address, _amount)
       .send({ from: account })
@@ -99,36 +114,48 @@ function App() {
           .stakeTokens(_amount)
           .send({ from: account })
           .on("receipt", () => {
-            console.log("Success!");
+            reloadData();
+            setLoading(false);
           });
       });
   };
 
   const unstakeTokens = () => {
+    setLoading(true);
     tokenFarm.methods
       .unstakeTokens()
       .send({ from: account })
       .on("receipt", () => {
-        console.log("Success!");
+        reloadData();
+        setLoading(false);
       });
   };
 
-  return (
-    <div>
-      <DappNavar account={account}></DappNavar>
-      <div className="container-fluid mt-5">
-        <div className="row">
-          <MainContent
-            stakingBalance={stakingBalance}
-            daiTokenBalance={daiTokenBalance}
-            dappTokenBalance={dappTokenBalance}
-            stakeTokens={stakeTokens}
-            unstakeTokens={unstakeTokens}
-          />
+  if (loading) {
+    return (
+      <center>
+        <br />
+        <Spinner animation="border" variant="primary" />
+      </center>
+    );
+  } else {
+    return (
+      <div className="container">
+        <DappNavar account={account}></DappNavar>
+        <div className="container-fluid mt-5">
+          <div className="row">
+            <MainContent
+              stakingBalance={stakingBalance}
+              daiTokenBalance={daiTokenBalance}
+              dappTokenBalance={dappTokenBalance}
+              stakeTokens={stakeTokens}
+              unstakeTokens={unstakeTokens}
+            />
+          </div>
         </div>
       </div>
-    </div>
-  );
+    );
+  }
 }
 
 export default App;

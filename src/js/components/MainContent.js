@@ -38,25 +38,30 @@ function MainContent(props) {
         </tbody>
       </Table>
       <br />
-      <Form.Label>
-        Balance: <span>{props.daiTokenBalance}</span>
-      </Form.Label>
-      <br />
-      <InputGroup>
-        <FormControl
-          onChange={handleFormChange}
-          placeholder="0"
-          aria-describedby="basic-addon2"
-        />
-        <InputGroup.Text id="basic-addon2">mDAI</InputGroup.Text>
-      </InputGroup>
-      <br />
-      <Button onClick={stakeHandler} variant="primary">
-        STAKE
-      </Button>
-      <Button onClick={unstakeHandler} variant="primary">
-        UNSTAKE
-      </Button>
+
+      <Form>
+        <Form.Group>
+          <Form.Label>Balance:</Form.Label>{" "}
+          <Form.Text>{props.daiTokenBalance} mDAI</Form.Text>
+        </Form.Group>
+        <Form.Group>
+          <InputGroup>
+            <FormControl
+              onChange={handleFormChange}
+              placeholder="Enter the number of Dai Tokens to stake..."
+              aria-describedby="basic-addon2"
+            />
+            <InputGroup.Text id="basic-addon2">mDAI</InputGroup.Text>
+          </InputGroup>
+        </Form.Group>
+        <br />
+        <Button onClick={stakeHandler} variant="primary">
+          STAKE
+        </Button>{" "}
+        <Button onClick={unstakeHandler} variant="primary">
+          UNSTAKE
+        </Button>
+      </Form>
     </div>
   );
 }

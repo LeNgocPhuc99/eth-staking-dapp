@@ -6,8 +6,13 @@ import DaiToken from "../abis/DaiToken.json";
 import DappToken from "../abis/DappToken.json";
 import TokenFarm from "../abis/TokenFarm.json";
 
+import BlockchainContext from "../context/BlockchainContext";
+import DisplayContext from "../context/DisplayContext";
+
 import MainContent from "./components/MainContent";
 import DappNavar from "./components/DappNavbar";
+
+import "../css/App.css";
 
 function App() {
   const [loading, setLoading] = useState(true);
@@ -135,24 +140,23 @@ function App() {
     return (
       <center>
         <br />
-        <Spinner animation="border" variant="primary" />
+        <Spinner animation="border" variant="success" />
       </center>
     );
   } else {
     return (
-      <div className="container">
-        <DappNavar account={account}></DappNavar>
-        <div className="container-fluid mt-5">
-          <div className="row">
-            <MainContent
-              stakingBalance={stakingBalance}
-              daiTokenBalance={daiTokenBalance}
-              dappTokenBalance={dappTokenBalance}
-              stakeTokens={stakeTokens}
-              unstakeTokens={unstakeTokens}
-            />
-          </div>
-        </div>
+      <div className="outerApp">
+        <BlockchainContext.Provider value={{ account, stakeTokens, unstakeTokens }}>
+          <DisplayContext.Provider
+            value={{ stakingBalance, dappTokenBalance, daiTokenBalance }}
+          >
+            <DappNavar />
+            <br/>
+            <div className="App">
+              <MainContent />
+            </div>
+          </DisplayContext.Provider>
+        </BlockchainContext.Provider>
       </div>
     );
   }

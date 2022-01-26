@@ -1,19 +1,30 @@
-import React from "react";
-
-import { Nav, Navbar, Container } from "react-bootstrap";
+import React, { useContext } from "react";
+import BlockchainContext from "../../context/BlockchainContext";
 
 function DappNavar(props) {
+  const blockchainContext = useContext(BlockchainContext);
+  const { account } = blockchainContext;
+
+  const AddressView = () => (
+    <>
+      Your're account: {account ? account.substring(0, 6) : undefined}...
+      {account
+        ? account.substring(account.length - 4, account.length)
+        : undefined}
+    </>
+  );
   return (
-    <Navbar bg="dark" variant="dark">
-      <Container>
-        <Navbar.Brand>LNP-Token Farm</Navbar.Brand>
-        <Nav className="me-auto">
-          <Nav.Link>
-            <span>Your're account: {props.account}</span>
-          </Nav.Link>
-        </Nav>
-      </Container>
-    </Navbar>
+    <>
+      <div className="dapp-nav-bar">
+        <div>
+          LNP - DAPP Token Farm
+        </div>
+        <div>STAKE</div>
+        <div>
+          <AddressView />
+        </div>
+      </div>
+    </>
   );
 }
 

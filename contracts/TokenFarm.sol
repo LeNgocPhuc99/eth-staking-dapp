@@ -43,8 +43,8 @@ contract TokenFarm {
         isStaking[msg.sender] = false;
     }
 
-    // Issuing Tokens (Earning)
-    function issueTokens() public {
+    // add Reward Tokens (Earning)
+    function addRewards() public {
         require(msg.sender == owner, "caller must be the owner");
         for (uint256 i = 0; i < stakers.length; i++) {
             address recipient = stakers[i];

@@ -1,7 +1,7 @@
 import React, { useContext } from "react";
 import BlockchainContext from "../../context/BlockchainContext";
 
-function DappNavar(props) {
+function DappNavar() {
   const blockchainContext = useContext(BlockchainContext);
   const { account } = blockchainContext;
 

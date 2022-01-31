@@ -9,7 +9,8 @@ import TokenFarm from "../abis/TokenFarm.json";
 import BlockchainContext from "../context/BlockchainContext";
 import DisplayContext from "../context/DisplayContext";
 
-import MainContent from "./components/MainContent";
+import UserView from "./components/UserView";
+import AdminView from "./components/AdminView";
 import DappNavar from "./components/DappNavbar";
 
 import "../css/App.css";
@@ -17,6 +18,7 @@ import "../css/App.css";
 function App() {
   const [loading, setLoading] = useState(true);
   const [account, setAccount] = useState();
+  const [owner, setOwner] = useState();
   const [daiToken, setDaiToken] = useState();
   const [dappToken, setDappToken] = useState();
   const [tokenFarm, setTokenFarm] = useState();
@@ -85,6 +87,8 @@ function App() {
         );
 
         setTokenFarm(tokenFarm);
+        let owner = await tokenFarm.methods.owner().call();
+        setOwner(owner);
         let stakingBalance = await tokenFarm.methods
           .stakingBalance(accounts[0])
           .call();
@@ -136,6 +140,29 @@ function App() {
       });
   };
 
+  const addRewards = () => {
+    setLoading(true);
+    tokenFarm.methods
+      .addRewards()
+      .send({ from: account })
+      .on("receipt", () => {
+        reloadData();
+        setLoading(false);
+      });
+  };
+
+  const MainView = () => (
+    <>
+      <br />
+      <div style={{ display: "flex" }}>
+        <UserView />
+        {account.toLowerCase() === owner.toLowerCase() ? (
+          <AdminView />
+        ) : undefined}
+      </div>
+    </>
+  );
+
   if (loading) {
     return (
       <center>
@@ -146,14 +173,16 @@ function App() {
   } else {
     return (
       <div className="outerApp">
-        <BlockchainContext.Provider value={{ account, stakeTokens, unstakeTokens }}>
+        <BlockchainContext.Provider
+          value={{ account, stakeTokens, unstakeTokens, addRewards }}
+        >
           <DisplayContext.Provider
             value={{ stakingBalance, dappTokenBalance, daiTokenBalance }}
           >
             <DappNavar />
-            <br/>
+            <br />
             <div className="App">
-              <MainContent />
+              <MainView />
             </div>
           </DisplayContext.Provider>
         </BlockchainContext.Provider>

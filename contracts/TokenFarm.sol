@@ -3,8 +3,11 @@ pragma solidity >=0.4.22 <0.9.0;
 
 import "./DaiToken.sol";
 import "./DappToken.sol";
+import "./SafeMath.sol";
 
 contract TokenFarm {
+    
+
     string public name = "Dapp Token Farm";
     DappToken public dappToken;
     DaiToken public daiToken;
@@ -19,6 +22,10 @@ contract TokenFarm {
     // array of all stakers
     address[] public stakers;
 
+    // 
+    uint256 public rewardPeriodEndTimestamp;
+    uint256 public rewardPerSesond;
+
     // users staking balance
     mapping(address => uint256) public stakingBalance;
 
@@ -27,6 +34,17 @@ contract TokenFarm {
 
     // mapping list of users who are staking at the moment
     mapping(address => bool) public isStaking;
+
+    modifier onlyOwner() {
+        require(msg.sender == owner);
+        _;
+    }
+
+    event AddRewards(uint256 amount, uint256 lengthInDays);
+    event ClaimReward(address indexed user, uint256 amount);
+    event Deposit(address indexed user, uint256 amount);
+    event Withdraw(address indexed user, uint256 amount);
+    
 
     constructor(DappToken _dappToken, DaiToken _daiToken) payable {
         dappToken = _dappToken;
@@ -75,8 +93,8 @@ contract TokenFarm {
     }
 
     // add Reward Tokens (Earning)
-    function addRewards() public {
-        require(msg.sender == owner, "caller must be the owner");
+    function updateRewards() onlyOwner public{
+        // require(msg.sender == owner, "caller must be the owner");
         for (uint256 i = 0; i < stakers.length; i++) {
             address recipient = stakers[i];
             uint256 balance = stakingBalance[recipient];

@@ -140,10 +140,10 @@ function App() {
       });
   };
 
-  const addRewards = () => {
+  const updateRewards = () => {
     setLoading(true);
     tokenFarm.methods
-      .addRewards()
+      .updateRewards()
       .send({ from: account })
       .on("receipt", () => {
         reloadData();
@@ -174,7 +174,7 @@ function App() {
     return (
       <div className="outerApp">
         <BlockchainContext.Provider
-          value={{ account, stakeTokens, unstakeTokens, addRewards }}
+          value={{ account, stakeTokens, unstakeTokens, updateRewards }}
         >
           <DisplayContext.Provider
             value={{ stakingBalance, dappTokenBalance, daiTokenBalance }}

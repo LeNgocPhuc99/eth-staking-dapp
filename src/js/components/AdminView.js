@@ -8,11 +8,11 @@ import { Button, FormControl, Container } from "react-bootstrap";
 function AdminView() {
   const blockchainContext = useContext(BlockchainContext);
   const displayContext = useContext(DisplayContext);
-  const { addRewards } = blockchainContext;
+  const { updateRewards } = blockchainContext;
   const { dappTokenBalance } = displayContext;
 
   const handleOnClick = () => {
-    addRewards();
+    updateRewards();
   }
 
   return (

@@ -3,26 +3,22 @@ import BlockchainContext from "../../context/BlockchainContext";
 
 function DappNavar() {
   const blockchainContext = useContext(BlockchainContext);
-  const { account } = blockchainContext;
+  const { web3, accounts } = blockchainContext;
 
   const AddressView = () => (
     <>
-      Your're account: {account ? account.substring(0, 6) : undefined}...
-      {account
-        ? account.substring(account.length - 4, account.length)
+      Connected: {accounts ? accounts[0].substring(0, 6) : undefined}...
+      {accounts
+        ? accounts[0].substring(accounts[0].length - 4, accounts[0].length)
         : undefined}
     </>
   );
   return (
     <>
       <div className="dapp-nav-bar">
-        <div>
-          LNP - DAPP Token Farm
-        </div>
+        <div>LNP - DAPP Token Farm</div>
         <div>STAKE</div>
-        <div>
-          <AddressView />
-        </div>
+        <div>{web3 ? <AddressView /> : "Not connected"}</div>
       </div>
     </>
   );

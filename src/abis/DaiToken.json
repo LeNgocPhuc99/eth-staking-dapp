@@ -9295,12 +9295,12 @@
         }
       },
       "links": {},
-      "address": "0xCc3e4E4f1404237992CC3702089a32678354A26d",
-      "transactionHash": "0x6c7a63e2df6bc2884b05a318a31ba28081315a6a50991ad8c623f29cca331a92"
+      "address": "0x6d01c3f50aC4e461001Ad40fe660054ed4762b0C",
+      "transactionHash": "0xbdfe411c2109ab978b90a1b1c96d493c90c46849401526d37a3d3020ce0857c6"
     }
   },
   "schemaVersion": "3.4.3",
-  "updatedAt": "2022-02-01T01:35:49.746Z",
+  "updatedAt": "2022-02-07T04:47:25.196Z",
   "networkType": "ethereum",
   "devdoc": {
     "kind": "dev",

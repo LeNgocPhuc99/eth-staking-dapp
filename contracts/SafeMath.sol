@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.4.22 <0.9.0;
 
-contract SafeMath {
+library SafeMath {
   function add(uint256 x, uint256 y) internal pure returns (uint256 z) {
     require((z = x + y) >= x, "add overflow");
   }

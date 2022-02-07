@@ -1,9 +1,8 @@
-import Web3 from "web3";
 import React, { useContext, useState } from "react";
 import {
   Button,
   Container,
-  FormControl,
+  Form,
   OverlayTrigger,
 } from "react-bootstrap";
 
@@ -11,27 +10,25 @@ import DisplayContext from "../../context/DisplayContext";
 import BlockchainContext from "../../context/BlockchainContext";
 
 function UserView() {
-  const [amount, setAmount] = useState();
   const displayContext = useContext(DisplayContext);
-  const blockchainContent = useContext(BlockchainContext);
-  const { stakeTokens, unstakeTokens } = blockchainContent;
-  const { stakingBalance, dappTokenBalance, daiTokenBalance } = displayContext;
+  const blockchainContext = useContext(BlockchainContext);
+  const { web3, accounts, tokenFarmContract, daiTokenContract } =
+    blockchainContext;
+  const { userInfo, refreshUserInfo, onInputNumberChange } = displayContext;
 
-  const stakeHandler = (event) => {
-    event.preventDefault();
-    let _amount;
-    _amount = Web3.utils.toWei(amount.toString(), "ether");
-    stakeTokens(_amount);
-  };
-
-  const unstakeHandler = (event) => {
-    event.preventDefault();
-    unstakeTokens();
-  };
+  const [stakeAmount, setStakeAmount] = useState("");
+  const [unStakeAmount, setUnStakeAmount] = useState("");
 
   const handleFormChange = (e) => {
     setAmount(e.target.value);
   };
+
+  function numberToFixed(n) {
+    if (n === "undefined") {
+      return n;
+    }
+    return parseFloat(n).toFixed(6);
+  }
 
   const CardKeyValue = (props) => (
     <>
@@ -47,33 +44,57 @@ function UserView() {
     <>
       <Container className="square inner-container">
         <br />
-        <CardKeyValue label="Staking Balance (mDAI)" value={stakingBalance} />
-        <CardKeyValue label="Reward Balance (DAPP)" value={dappTokenBalance} />
+        <CardKeyValue
+          label={"Staking Balance (mDAI)"}
+          value={userInfo["deposited"]}
+        />
+        <CardKeyValue
+          label="Reward Balance (DAPP)"
+          value={userInfo["rewardTokenBalance"]}
+        />
         <br />
         <br />
         <div className="label-above-button">
-          Available mDAI token balance to stake: {daiTokenBalance} mDAI
+          Available {userInfo["depSymbol"]} token balance to stake:{" "}
+          {userInfo["depositTokenBalance"]}{userInfo["depSymbol"]}
         </div>
         <div className="input-button-container">
           <div>
-            <FormControl
-              onChange={handleFormChange}
-              placeholder="Amount mDAI tokens"
+            <Form.Control
+              value={stakeAmount}
+              onChange={(e) => {onInputNumberChange(e, setStakeAmount)}}
+              placeholder="Amount tokens"
             />
           </div>
           <div>
             <OverlayTrigger placement="right" overlay={<></>}>
-              <Button variant="success" onClick={stakeHandler}>
-                STAKE
-              </Button>
+              <Button variant="success">STAKE</Button>
             </OverlayTrigger>
           </div>
         </div>
         <br />
+
+        <div className="label-above-button">
+          You staked: 
+          {userInfo["deposited"]}{userInfo["depSymbol"]}
+        </div>
+        <div className="input-button-container">
+          <div>
+            <Form.Control
+              value={unStakeAmount}
+              onChange={(e) => {onInputNumberChange(e, setUnStakeAmount)}}
+              placeholder="Amount tokens"
+            />
+          </div>
+          <div>
+            <OverlayTrigger placement="right" overlay={<></>}>
+              <Button variant="success">UNSTAKE</Button>
+            </OverlayTrigger>
+          </div>
+        </div>
+
         <div className="button-stretch">
-          <Button onClick={unstakeHandler} variant="success">
-            UNSTAKE
-          </Button>
+          <Button variant="success">CLAIM REWARD</Button>
         </div>
       </Container>
     </>

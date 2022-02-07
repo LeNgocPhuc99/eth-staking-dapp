@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { Spinner } from "react-bootstrap";
-import Web3 from "web3";
 
 import DaiToken from "../abis/DaiToken.json";
 import DappToken from "../abis/DappToken.json";
 import TokenFarm from "../abis/TokenFarm.json";
+
+import getWeb3 from "./utils/getWeb3";
 
 import BlockchainContext from "../context/BlockchainContext";
 import DisplayContext from "../context/DisplayContext";
@@ -13,150 +14,149 @@ import UserView from "./components/UserView";
 import AdminView from "./components/AdminView";
 import DappNavar from "./components/DappNavbar";
 
+import { Button } from "react-bootstrap";
 import "../css/App.css";
 
 function App() {
   const [loading, setLoading] = useState(true);
-  const [account, setAccount] = useState();
+  const [web3, setWeb3] = useState();
+  const [accounts, setAccounts] = useState();
+
+  const [userInfo, setUserInfo] = useState({});
   const [owner, setOwner] = useState();
-  const [daiToken, setDaiToken] = useState();
-  const [dappToken, setDappToken] = useState();
-  const [tokenFarm, setTokenFarm] = useState();
-  const [daiTokenBalance, setDaiTokenBalance] = useState();
-  const [dappTokenBalance, setDappTokenBalance] = useState();
-  const [stakingBalance, setStakingBalance] = useState();
+
+  const [daiTokenContract, setDaiTokenContract] = useState();
+  const [dappTokenContract, setDappTokenContract] = useState();
+  const [tokenFarmContract, setTokenFarmContract] = useState();
 
   useEffect(() => {
-    const ethEnable = async () => {
-      await loadBlockchainData();
-    };
-
-    ethEnable();
+    (async () => {
+      setLoading(false);
+    })();
   }, []);
 
-  const loadBlockchainData = async () => {
-    if (window.ethereum) {
-      await window.ethereum.request({ method: "eth_requestAccounts" });
-      window.web3 = new Web3(window.ethereum);
+  async function connectToBlockchain() {
+    try {
+      setLoading(true);
+      // load web3
+      const web3 = await getWeb3();
+      setWeb3(web3);
 
-      let web3 = window.web3;
-
+      // get user's accounts
       const accounts = await web3.eth.getAccounts();
-      setAccount(accounts[0]);
+      setAccounts(accounts);
 
       const networkId = await web3.eth.net.getId();
 
       // load DaiToken contract
       const daiTokenData = DaiToken.networks[networkId];
       if (daiTokenData) {
-        const daiToken = new web3.eth.Contract(
+        const daiTokenContract = new web3.eth.Contract(
           DaiToken.abi,
           daiTokenData.address
         );
-        setDaiToken(daiToken);
-        let daiTokenBalance = await daiToken.methods
-          .balanceOf(accounts[0])
-          .call();
-        setDaiTokenBalance(Web3.utils.fromWei(daiTokenBalance.toString()));
+
+        setDaiTokenContract(daiTokenContract);
       } else {
         window.alert("DaiContract contract not deployed to detected network");
       }
-
       // load DappToken contract
       const dappTokenData = DappToken.networks[networkId];
       if (dappTokenData) {
-        const dappToken = new web3.eth.Contract(
+        const dappTokenContract = new web3.eth.Contract(
           DappToken.abi,
           dappTokenData.address
         );
-        setDappToken(dappToken);
-        let dappTokenBalance = await dappToken.methods
-          .balanceOf(accounts[0])
-          .call();
-        setDappTokenBalance(Web3.utils.fromWei(dappTokenBalance.toString()));
+        setDappTokenContract(dappTokenContract);
       } else {
         window.alert("DappContract contract not deployed to detected network");
       }
-
       // load TokenFarm
       const tokenFarmData = TokenFarm.networks[networkId];
       if (tokenFarmData) {
-        const tokenFarm = new web3.eth.Contract(
+        const tokenFarmContract = new web3.eth.Contract(
           TokenFarm.abi,
           tokenFarmData.address
         );
-
-        setTokenFarm(tokenFarm);
-        let owner = await tokenFarm.methods.owner().call();
+        setTokenFarmContract(tokenFarmContract);
+        const owner = await tokenFarmContract.methods.owner().call();
+        console.log(owner);
         setOwner(owner);
-        let stakingBalance = await tokenFarm.methods
-          .stakingBalance(accounts[0])
-          .call();
-        setStakingBalance(Web3.utils.fromWei(stakingBalance.toString()));
       } else {
         window.alert("TokenFarm contract not deployed to detected network");
       }
-    } else if (!window.web3) {
-      window.alert("Non-Ethereum browser detected.");
+
+      window.ethereum.on("accountsChanged", function (_accounts) {
+        if (_accounts.length === 0) {
+          setAccounts(undefined);
+          setWeb3(undefined);
+        } else {
+          setAccounts(_accounts);
+        }
+      });
+    } catch (error) {
+      console.log(error);
     }
     setLoading(false);
-  };
+  }
 
-  const reloadData = async () => {
+  useEffect(() => {
+    const loadData = async () => {
+      await refreshUserInfo();
+    };
+
+    if (
+      typeof web3 !== "undefined" &&
+      typeof accounts !== "undefined" &&
+      typeof tokenFarmContract !== "undefined" &&
+      typeof daiTokenContract !== "undefined" &&
+      typeof dappTokenContract !== "undefined"
+    ) {
+      loadData();
+    }
+  }, [web3, accounts, tokenFarmContract, daiTokenContract, dappTokenContract]);
+
+  async function refreshUserInfo() {
     setLoading(true);
-    let _daiBalance = await daiToken.methods.balanceOf(account).call();
-    setDaiTokenBalance(Web3.utils.fromWei(_daiBalance.toString()));
-    let _stakingBalance = await tokenFarm.methods
-      .stakingBalance(account)
-      .call();
-    setStakingBalance(Web3.utils.fromWei(_stakingBalance.toString()));
+    let res = await tokenFarmContract.methods.getUserInfo().call({from: accounts[0]});
+    let depBalance = await daiTokenContract.methods
+      .balanceOf(accounts[0])
+      .call({ from: accounts[0] });
+    let rewardBalance = await dappTokenContract.methods
+      .balanceOf(accounts[0])
+      .call({ from: accounts[0] });
+    let depSymbol = await daiTokenContract.methods
+      .symbol()
+      .call({ from: accounts[0] });
+    let rewSymbol = await dappTokenContract.methods
+      .symbol()
+      .call({ from: accounts[0] });
+
+    let userInfo = {
+      deposited: web3.utils.fromWei(res),
+      depositTokenBalance: web3.utils.fromWei(depBalance),
+      rewardTokenBalance: web3.utils.fromWei(rewardBalance),
+      depSymbol: depSymbol,
+      rewSymbol: rewSymbol,
+    };
+
+    setUserInfo(userInfo);
     setLoading(false);
-  };
+  }
 
-  const stakeTokens = (_amount) => {
-    setLoading(true);
-    daiToken.methods
-      .approve(tokenFarm._address, _amount)
-      .send({ from: account })
-      .on("receipt", () => {
-        tokenFarm.methods
-          .stakeTokens(_amount)
-          .send({ from: account })
-          .on("receipt", () => {
-            reloadData();
-            setLoading(false);
-          });
-      });
-  };
-
-  const unstakeTokens = () => {
-    setLoading(true);
-    tokenFarm.methods
-      .unstakeTokens()
-      .send({ from: account })
-      .on("receipt", () => {
-        reloadData();
-        setLoading(false);
-      });
-  };
-
-  const updateRewards = () => {
-    setLoading(true);
-    tokenFarm.methods
-      .updateRewards()
-      .send({ from: account })
-      .on("receipt", () => {
-        reloadData();
-        setLoading(false);
-      });
-  };
+  function onInputNumberChange(e, f) {
+    const re = new RegExp("^[+-]?([0-9]+([.][0-9]*)?|[.][0-9]+)$");
+    if (e.target.value === "" || re.test(e.target.value)) {
+      f(e.target.value);
+    }
+  }
 
   const MainView = () => (
     <>
       <br />
       <div style={{ display: "flex" }}>
         <UserView />
-        {account.toLowerCase() === owner.toLowerCase() ? (
+        {accounts[0].toLowerCase() === owner.toLowerCase() ? (
           <AdminView />
         ) : undefined}
       </div>
@@ -174,15 +174,26 @@ function App() {
     return (
       <div className="outerApp">
         <BlockchainContext.Provider
-          value={{ account, stakeTokens, unstakeTokens, updateRewards }}
+          value={{ web3, accounts, tokenFarmContract, dappTokenContract, daiTokenContract }}
         >
           <DisplayContext.Provider
-            value={{ stakingBalance, dappTokenBalance, daiTokenBalance }}
+            value={{
+              onInputNumberChange,
+              userInfo,
+              refreshUserInfo
+            }}
           >
             <DappNavar />
             <br />
             <div className="App">
-              <MainView />
+              {web3 ? (
+                <MainView />
+              ) : (
+                <div>
+                  <br />
+                  <Button onClick={connectToBlockchain}>Connect</Button>
+                </div>
+              )}
             </div>
           </DisplayContext.Provider>
         </BlockchainContext.Provider>

@@ -147,7 +147,37 @@ contract TokenFarm {
     }
 
     // withdraw
-    function withdraw(uint256 _amount) external {}
+    function withdraw(uint256 _amount) external {
+        UserInfo storage user = users[msg.sender];
+        require(user.deposited >= _amount, "TokenFarm: balance not enough");
+        updateRewards();
+        // send reward
+        uint256 pendingReward = user
+            .deposited
+            .mul(accumulatedRewardPerShare)
+            .div(1e12)
+            .div(1e7)
+            .sub(user.rewardsAlreadyConsidered);
+        require(
+            dappToken.transfer(msg.sender, pendingReward),
+            "TokenFram: reward transfer failed"
+        );
+        emit ClaimReward(msg.sender, pendingReward);
+
+        // withdraw tokens
+        user.deposited = user.deposited.sub(_amount);
+        totalStaked = totalStaked.sub(_amount);
+        user.rewardsAlreadyConsidered = user
+            .deposited
+            .mul(accumulatedRewardPerShare)
+            .div(1e12)
+            .div(1e7);
+        require(
+            daiToken.transfer(msg.sender, _amount),
+            "TokenFarm: desposit withdraw failed"
+        );
+        emit Withraw(msg.sender, _amount);
+    }
 
     // claim reward
     function claim() external {

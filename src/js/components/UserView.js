@@ -43,6 +43,26 @@ function UserView() {
     await refreshUserInfo();
   }
 
+  async function withdraw() {
+    if (!isNonZeroNumber(unStakeAmount)) {
+      window.alert("Not amount entered");
+      return;
+    }
+
+    if (parseFloat(unStakeAmount) > parseFloat(userInfo["deposited"])) {
+      window.alert("Can't unstake more than stake");
+      return;
+    }
+
+    let amount = web3.utils.toWei(unStakeAmount.toString());
+    await tokenFarmContract.methods
+      .withdraw(amount)
+      .send({ from: accounts[0] });
+
+    setUnStakeAmount("");
+    await refreshUserInfo();
+  }
+
   async function claim() {
     await tokenFarmContract.methods.claim().send({ from: accounts[0] });
     await refreshUserInfo();
@@ -140,7 +160,9 @@ function UserView() {
           </div>
           <div>
             <OverlayTrigger placement="right" overlay={<></>}>
-              <Button variant="success">UNSTAKE</Button>
+              <Button onClick={withdraw} variant="success">
+                UNSTAKE
+              </Button>
             </OverlayTrigger>
           </div>
         </div>

@@ -88,16 +88,19 @@ contract("TokenFarm", async (accounts) => {
     await dappToken.transfer(accounts[0], tokens("1000000"));
     await daiToken.transfer(accounts[1], tokens("100"), defaultOptions);
 
-    let prevUserBalance = await dappToken.balanceOf(accounts[1], {
+    let prevUserRewardBalance = await dappToken.balanceOf(accounts[1], {
       from: accounts[1],
     });
 
+    let prevUserBalance = await daiToken.balanceOf(accounts[1], {from: accounts[1]});
+
+    
     // add rewards
     let rewardAmount = tokens("300");
     let days = 30;
     await dappToken.approve(tokenFarm.address, rewardAmount, defaultOptions);
     await tokenFarm.addRewards(rewardAmount, days, defaultOptions);
-    let preContractRewardBalance = await dappToken.balanceOf(
+    let prevContractRewardBalance = await dappToken.balanceOf(
       tokenFarm.address,
       { from: accounts[1] }
     );
@@ -139,29 +142,45 @@ contract("TokenFarm", async (accounts) => {
     await tokenFarm.claim({ from: accounts[1] });
 
     // check user rewards balance
-    let userBalance = await dappToken.balanceOf(accounts[1], {
+    let userRewardBalance = await dappToken.balanceOf(accounts[1], {
       from: accounts[1],
     });
-    let delta = userBalance.sub(prevUserBalance);
+    let delta = userRewardBalance.sub(prevUserRewardBalance);
     assertEqualWithMargin(
       delta,
       expectedPendingReward,
       contractRps.div(rpsMultiplierBN),
       "Wrong amount of reward"
     );
-    prevUserBalance = userBalance;
+    prevUserRewardBalance = userRewardBalance;
 
     // check TokenFarm rewards balance
     let contractBalance = await dappToken.balanceOf(tokenFarm.address, {
       from: accounts[1],
     });
-    let contractDelta = preContractRewardBalance.sub(contractBalance);
+    let contractDelta = prevContractRewardBalance.sub(contractBalance);
     assertEqualWithMargin(
       contractDelta,
       expectedPendingReward,
       contractRps.div(rpsMultiplierBN),
       "contract lost different amount of reward"
     );
-    preContractRewardBalance = contractBalance;
+    prevContractRewardBalance = contractBalance;
+
+    // withdraw funds
+    await tokenFarm.withdraw(depositAmount, {from: accounts[1]});
+    prevUserRewardBalance = await dappToken.balanceOf(accounts[1], {from: accounts[1]});
+    
+    // check user balance
+    let userBalance = await daiToken.balanceOf(accounts[1], {from: accounts[1]});
+    assert.equal(userBalance.toString(), prevUserBalance.toString(), "wrong user balance after withdraw");
+    prevUserBalance = userBalance;
+    
+    // after 15 days
+    secs = 60*60*24*15;
+    await timeMachine.advanceTimeAndBlock(secs);
+    // claim reward
+    userRewardBalance = await dappToken.balanceOf(accounts[1], {from: accounts[1]});
+    assert.equal(userRewardBalance.toString(), prevUserRewardBalance.toString(), "User received rewards even withdraw all stake")
   });
 });

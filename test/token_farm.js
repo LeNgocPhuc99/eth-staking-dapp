@@ -12,7 +12,6 @@ function tokens(n) {
 }
 
 contract("TokenFarm", async (accounts) => {
-  let daiToken, dappToken, tokenFarm;
   const defaultOptions = { from: accounts[0] };
   const BN = web3.utils.BN;
   const secondsInDayBN = new BN(24).mul(new BN(60)).mul(new BN(60));
@@ -33,16 +32,24 @@ contract("TokenFarm", async (accounts) => {
     ];
   }
 
-  before(async () => {
-    daiToken = await DaiToken.new();
-    dappToken = await DappToken.new();
-    tokenFarm = await TokenFarm.new(dappToken.address, daiToken.address);
+  function assertEqualWithMargin(_num1, _num2, _margin, _message) {
+    if (
+      BN.max(_num1, _num2)
+        .sub(BN.min(_num1, _num2))
+        .lte(_margin.mul(new BN(3)))
+    )
+      return;
 
-    await dappToken.transfer(accounts[0], tokens("1000000"));
-    await daiToken.transfer(accounts[1], tokens("100"), defaultOptions);
-  });
+    assert.equal(_num1.toString(), _num2.toString(), _message);
+  }
 
   it("should calculate the parameters correctly", async () => {
+    const daiToken = await DaiToken.new();
+    const dappToken = await DappToken.new();
+    const tokenFarm = await TokenFarm.new(dappToken.address, daiToken.address);
+    await dappToken.transfer(accounts[0], tokens("1000000"));
+    await daiToken.transfer(accounts[1], tokens("100"), defaultOptions);
+
     let rewardAmount = tokens("300");
     let days = 30;
     await dappToken.approve(tokenFarm.address, rewardAmount, defaultOptions);
@@ -71,6 +78,53 @@ contract("TokenFarm", async (accounts) => {
       contractEndTime.toString(),
       expectedEndTime.toString(),
       "Wrong contract end time"
+    );
+  });
+
+  it("should calculate and distribute rewards", async () => {
+    const daiToken = await DaiToken.new();
+    const dappToken = await DappToken.new();
+    const tokenFarm = await TokenFarm.new(dappToken.address, daiToken.address);
+    await dappToken.transfer(accounts[0], tokens("1000000"));
+    await daiToken.transfer(accounts[1], tokens("100"), defaultOptions);
+
+    // add rewards
+    let rewardAmount = tokens("300");
+    let days = 30;
+    await dappToken.approve(tokenFarm.address, rewardAmount, defaultOptions);
+    await tokenFarm.addRewards(rewardAmount, days, defaultOptions);
+
+    let contractRps = await tokenFarm.rewardPerSecond.call(defaultOptions);
+
+    // user stakes funds
+    let depositAmount = tokens("10");
+    await daiToken.approve(tokenFarm.address, depositAmount, {
+      from: accounts[1],
+    });
+    await tokenFarm.deposit(depositAmount, { from: accounts[1] });
+    let initialReward = await tokenFarm.pendingRewards(accounts[1], {
+      from: accounts[1],
+    });
+    assert.equal(
+      initialReward.toString(),
+      0,
+      "User has rewards pending straight after staking"
+    );
+
+    // after 10 days
+    let secs = 60 * 60 * 24 * 10;
+    await timeMachine.advanceTimeAndBlock(secs);
+    let pendingReward = await tokenFarm.pendingRewards(accounts[1], {
+      from: accounts[1],
+    });
+    let expectedPendingReward = contractRps
+      .mul(new BN(secs))
+      .div(rpsMultiplierBN);
+    assertEqualWithMargin(
+      pendingReward,
+      expectedPendingReward,
+      contractRps.div(rpsMultiplierBN),
+      "Wrong pending reward"
     );
   });
 });

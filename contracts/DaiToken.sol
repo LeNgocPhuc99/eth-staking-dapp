@@ -42,8 +42,8 @@ contract DaiToken {
         address _to,
         uint256 _value
     ) public returns (bool success) {
-        require(balanceOf[_from] >= _value);
-        require(allowance[_from][msg.sender] >= _value);
+        require(balanceOf[_from] >= _value, "balance, not enough");
+        require(allowance[_from][msg.sender] >= _value,"allownce not enough");
         balanceOf[_from] -= _value;
         balanceOf[_to] += _value;
         allowance[_from][msg.sender] -= _value;

@@ -43,8 +43,8 @@ contract TokenFarm {
 
     event AddRewards(uint256 amount, uint256 lengthInDays);
     event ClaimReward(address indexed user, uint256 amount);
-    event Stake(address indexed user, uint256 amount);
-    event UnStake(address indexed user, uint256 amount);
+    event Deposit(address indexed user, uint256 amount);
+    event Withraw(address indexed user, uint256 amount);
 
     constructor(DappToken _dappToken, DaiToken _daiToken) {
         dappToken = _dappToken;
@@ -56,15 +56,20 @@ contract TokenFarm {
         external
         onlyOwner
     {
-        require(block.timestamp > rewardPeriodEndTimestamp, "Staker: can't add rewards before period finished");
+        require(
+            block.timestamp > rewardPeriodEndTimestamp,
+            "TokenFarm: can't add rewards before period finished"
+        );
         updateRewards();
         rewardPeriodEndTimestamp = block.timestamp.add(
             _lengthInDays.mul(24 * 60 * 60)
         );
-        rewardPerSecond = _rewardsAmount.mul(1e7).div(_lengthInDays).div(24 * 60 * 60);
+        rewardPerSecond = _rewardsAmount.mul(1e7).div(_lengthInDays).div(
+            24 * 60 * 60
+        );
         require(
             dappToken.transferFrom(msg.sender, address(this), _rewardsAmount),
-            "Staker: transfer failed"
+            "TokenFarm: transfer failed"
         );
         emit AddRewards(_rewardsAmount, _lengthInDays);
     }
@@ -105,21 +110,40 @@ contract TokenFarm {
         }
     }
 
-    // Stakes Tokens (Deposit): transfer the DAI token from the investor to this contract
-    function stakeTokens(uint256 _amount) public {
-        // // must more than 0
-        // require(_amount > 0, "amount cannot be 0");
-        // // sending DAi tokens
-        // daiToken.transferFrom(msg.sender, address(this), _amount);
-        // totalStaked += _amount;
-        // // updating staking balnce
-        // stakingBalance[msg.sender] = stakingBalance[msg.sender] + _amount;
-        // if (!hasStaked[msg.sender]) {
-        //     // stakers.push(msg.sender);
-        // }
-        // // updating staking status
-        // hasStaked[msg.sender] = true;
-        // isStaking[msg.sender] = true;
+    //deposit: transfer the DAI token from the investor to this contract
+    function deposit(uint256 _amount) external {
+        UserInfo storage user = users[msg.sender];
+        updateRewards();
+
+        // reward for previous deposits
+        if (user.deposited > 0) {
+            uint256 pending = user
+                .deposited
+                .mul(accumulatedRewardPerShare)
+                .div(1e12)
+                .div(1e7)
+                .sub(user.rewardsAlreadyConsidered);
+
+            require(
+                dappToken.transfer(msg.sender, pending),
+                "TokenFarm: transfer failt"
+            );
+            emit ClaimReward(msg.sender, pending);
+        }
+
+        // deposit
+        user.deposited = user.deposited.add(_amount);
+        totalStaked = totalStaked.add(_amount);
+        user.rewardsAlreadyConsidered = user
+            .deposited
+            .mul(accumulatedRewardPerShare)
+            .div(1e12)
+            .div(1e7);
+        require(
+            daiToken.transferFrom(msg.sender, address(this), _amount),
+            "TokenFarm: transferFrom failed"
+        );
+        emit Deposit(msg.sender, _amount);
     }
 
     // Unstaking Tokens (Withdraw)
@@ -137,24 +161,38 @@ contract TokenFarm {
         // isStaking[msg.sender] = false;
     }
 
-    // add Reward Tokens (Earning)
-    // function updateRewards() public onlyOwner {
-    //     // require(msg.sender == owner, "caller must be the owner");
-    //     for (uint256 i = 0; i < stakers.length; i++) {
-    //         address recipient = stakers[i];
-    //         uint256 balance = stakingBalance[recipient];
+    function pendingRewards(address _user) public view returns(uint256) {
+        UserInfo storage user = users[_user];
+        uint256 accumulated = accumulatedRewardPerShare;
+        if (block.timestamp > lastRewardTimestamp && lastRewardTimestamp <= rewardPeriodEndTimestamp && totalStaked != 0) {
+            uint256 endingTime;
+            if (block.timestamp > rewardPeriodEndTimestamp) {
+                endingTime = rewardPeriodEndTimestamp;
+            } else {
+                endingTime = block.timestamp;
+            }
+            uint256 secondsSinceLastRewardUpdate = endingTime.sub(lastRewardTimestamp);
+            uint256 totalNewReward = secondsSinceLastRewardUpdate.mul(rewardPerSecond);
+            accumulated = accumulated.add(totalNewReward.mul(1e12).div(totalStaked));
+        }
+        return user.deposited.mul(accumulated).div(1e12).div(1e7).sub(user.rewardsAlreadyConsidered);  
+    }
 
-    //         if (balance > 0) {
-    //             dappToken.transfer(recipient, balance);
-    //         }
-    //     }
-    // }
-
-    function getUserInfo() external view returns(uint256 _rewardPerSecond, uint256 _secondsLeft, uint256 _deposited) {
-        if(block.timestamp <= rewardPeriodEndTimestamp) {
+    function getUserInfo()
+        external
+        view
+        returns (
+            uint256 _rewardPerSecond,
+            uint256 _secondsLeft,
+            uint256 _deposited,
+            uint256 _pendingRewards
+        )
+    {
+        if (block.timestamp <= rewardPeriodEndTimestamp) {
             _secondsLeft = rewardPeriodEndTimestamp.sub(block.timestamp);
             _rewardPerSecond = rewardPerSecond.div(1e7);
         }
         _deposited = users[msg.sender].deposited;
+        _pendingRewards = pendingRewards(msg.sender);
     }
 }

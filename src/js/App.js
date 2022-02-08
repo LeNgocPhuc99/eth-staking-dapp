@@ -135,6 +135,7 @@ function App() {
 
     let userInfo = {
       deposited: web3.utils.fromWei(res["_deposited"]),
+      pendingRewards: web3.utils.fromWei(res["_pendingRewards"]),
       rewardPerDay: (res["_rewardPerSecond"] * 24 * 60 * 60) / 10 ** 18,
       daysLeft: res["_secondsLeft"] / 60 / 60 / 24,
       depositTokenBalance: web3.utils.fromWei(depBalance),
@@ -142,8 +143,6 @@ function App() {
       depSymbol: depSymbol,
       rewSymbol: rewSymbol,
     };
-
-    console.log(userInfo);
 
     setUserInfo(userInfo);
     setLoading(false);

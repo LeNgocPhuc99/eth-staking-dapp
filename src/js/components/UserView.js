@@ -22,6 +22,27 @@ function UserView() {
     return parseFloat(n).toFixed(6);
   }
 
+  async function deposit() {
+    if (!isNonZeroNumber(stakeAmount)) {
+      window.alert("Not amount enter");
+      return;
+    }
+
+    if (parseFloat(stakeAmount) > parseFloat(userInfo["depositTokenBalance"])) {
+      window.alert("Not enough balance");
+      return;
+    }
+    let amount = web3.utils.toWei(stakeAmount.toString());
+
+    await daiTokenContract.methods
+      .approve(tokenFarmContract.options.address, amount.toString())
+      .send({ from: accounts[0] });
+
+    await tokenFarmContract.methods.deposit(amount).send({ from: accounts[0] });
+    setStakeAmount("");
+    await refreshUserInfo();
+  }
+
   const CardKeyValue = (props) => (
     <>
       <div className="card-key-value">
@@ -60,19 +81,24 @@ function UserView() {
           <RewardsFinished />
         )}
         <CardKeyValue
-          label={"Staking Balance (mDAI)"}
-          value={numberToFixed(userInfo["deposited"])}
+          label={"Your staked:"}
+          value={
+            numberToFixed(userInfo["deposited"]) + " " + userInfo["depSymbol"]
+          }
         />
         <CardKeyValue
-          label="Reward Balance (DAPP)"
-          value={numberToFixed(userInfo["rewardTokenBalance"])}
+          label="Your pending reward: "
+          value={
+            numberToFixed(userInfo["pendingRewards"]) +
+            " " +
+            userInfo["rewSymbol"]
+          }
         />
         <br />
         <br />
         <div className="label-above-button">
           Available {userInfo["depSymbol"]} token balance to stake:{" "}
-          {userInfo["depositTokenBalance"]}
-          {userInfo["depSymbol"]}
+          {userInfo["depositTokenBalance"]} {userInfo["depSymbol"]}
         </div>
         <div className="input-button-container">
           <div>
@@ -86,16 +112,17 @@ function UserView() {
           </div>
           <div>
             <OverlayTrigger placement="right" overlay={<></>}>
-              <Button variant="success">STAKE</Button>
+              <Button onClick={deposit} variant="success">
+                STAKE
+              </Button>
             </OverlayTrigger>
           </div>
         </div>
         <br />
 
         <div className="label-above-button">
-          You staked:
-          {userInfo["deposited"]}
-          {userInfo["depSymbol"]}
+          You staked: {" "}
+          {userInfo["deposited"]} {userInfo["depSymbol"]}
         </div>
         <div className="input-button-container">
           <div>

@@ -1,4 +1,5 @@
 const { assert } = require("chai");
+const timeMachine = require("ganache-time-traveler");
 
 const DaiToken = artifacts.require("DaiToken");
 const DappToken = artifacts.require("DappToken");
@@ -10,135 +11,66 @@ function tokens(n) {
   return web3.utils.toWei(n, "ether");
 }
 
-contract("TokenFarm", ([owner, investor]) => {
+contract("TokenFarm", async (accounts) => {
   let daiToken, dappToken, tokenFarm;
+  const defaultOptions = { from: accounts[0] };
+  const BN = web3.utils.BN;
+  const secondsInDayBN = new BN(24).mul(new BN(60)).mul(new BN(60));
+  const rpsMultiplierBN = new BN(10 ** 7);
+
+  beforeEach(async () => {
+    let snapshot = await timeMachine.takeSnapshot();
+    snapshotId = snapshot["result"];
+  });
+
+  afterEach(async () => {
+    await timeMachine.revertToSnapshot(snapshotId);
+  });
+
+  async function getTime() {
+    return (await web3.eth.getBlock(await web3.eth.getBlockNumber()))[
+      "timestamp"
+    ];
+  }
 
   before(async () => {
-    // Load Contract
     daiToken = await DaiToken.new();
     dappToken = await DappToken.new();
     tokenFarm = await TokenFarm.new(dappToken.address, daiToken.address);
 
-    // Transfer all DAPP tokens to farm (1 million)
-    await dappToken.transfer(tokenFarm.address, tokens("1000000"));
-    // Send tokens to investor
-    await daiToken.transfer(investor, tokens("100"), { from: owner });
+    await dappToken.transfer(accounts[0], tokens("1000000"));
+    await daiToken.transfer(accounts[1], tokens("100"), defaultOptions);
   });
 
-  describe("Mock DAI deployment", async () => {
-    it("has name", async () => {
-      const name = await daiToken.name();
-      assert.equal(name, "Mock DAI Token");
-    });
-  });
+  it("should calculate the parameters correctly", async () => {
+    let rewardAmount = tokens("300");
+    let days = 30;
+    await dappToken.approve(tokenFarm.address, rewardAmount, defaultOptions);
+    await tokenFarm.addRewards(rewardAmount, days, defaultOptions);
 
-  describe("DAPP deployment", async () => {
-    it("has name", async () => {
-      const name = await dappToken.name();
-      assert.equal(name, "Dapp Token");
-    });
-  });
+    let startingTime = await getTime();
 
-  describe("Token Farm deployment", async () => {
-    it("has name", async () => {
-      const name = await tokenFarm.name();
-      assert.equal(name, "Dapp Token Farm");
-    });
+    let contractRps = await tokenFarm.rewardPerSecond.call(defaultOptions);
+    let expectedRps = await new BN(rewardAmount)
+      .mul(rpsMultiplierBN)
+      .div(new BN(days))
+      .div(secondsInDayBN);
+    assert.equal(
+      contractRps.toString(),
+      expectedRps.toString(),
+      "Wrong contract end time"
+    );
 
-    it("contract has tokens", async () => {
-      let balance = await dappToken.balanceOf(tokenFarm.address);
-      assert.equal(balance.toString(), tokens("1000000"));
-    });
-  });
-
-  describe("Farming tokens", async () => {
-    it("rewards investor for staking mDai tokens", async () => {
-      let result;
-
-      // check investor balance before staking
-      result = await daiToken.balanceOf(investor);
-      assert.equal(
-        result.toString(),
-        tokens("100"),
-        "investor Mock DAI wallet balance correct before staking"
-      );
-
-      // Stake Mock DAI tokens
-      await daiToken.approve(tokenFarm.address, tokens("100"), {
-        from: investor,
-      });
-      await tokenFarm.stakeTokens(tokens("100"), { from: investor });
-
-      // Check staking result
-      result = await daiToken.balanceOf(investor);
-      assert.equal(
-        result.toString(),
-        tokens("0"),
-        "investor Mock DAI wallet balance correct after staking"
-      );
-
-      result = await daiToken.balanceOf(tokenFarm.address);
-      assert.equal(
-        result.toString(),
-        tokens("100"),
-        "Token Farm Mock DAI wallet balance correct after staking"
-      );
-
-      result = await tokenFarm.stakingBalance(investor);
-      assert.equal(
-        result.toString(),
-        tokens("100"),
-        "investor balance correct after staking"
-      );
-
-      result = await tokenFarm.isStaking(investor);
-      assert.equal(
-        result.toString(),
-        "true",
-        "investor staking status correct after staking"
-      );
-
-      // Issue Token
-      await tokenFarm.issueTokens({ from: owner });
-
-      result = await dappToken.balanceOf(investor);
-      assert.equal(
-        result.toString(),
-        tokens("100"),
-        "investor DApp Token wallet balance correct after issuance"
-      );
-
-      await tokenFarm.issueTokens({ from: investor }).should.be.rejected;
-
-      // Check result after unstaking
-      await tokenFarm.unstakeTokens({ from: investor });
-      result = await daiToken.balanceOf(investor);
-      assert.equal(
-        result.toString(),
-        tokens("100"),
-        "investor Mock DAI wallet balance correct after staking"
-      );
-
-      result = await daiToken.balanceOf(tokenFarm.address);
-      assert.equal(
-        result.toString(),
-        tokens("0"),
-        "Token Farm Mock DAI balance correct after staking"
-      );
-
-      result = await tokenFarm.stakingBalance(investor);
-      assert.equal(
-        result.toString(),
-        tokens("0"),
-        "investor staking balance correct after staking"
-      );
-
-      result = await tokenFarm.isStaking(investor);
-      assert.equal(
-        result.toString(),
-        "false",
-        "investor staking status correct after staking"
-      );
-    });
+    let contractEndTime = await tokenFarm.rewardPeriodEndTimestamp.call(
+      defaultOptions
+    );
+    let expectedEndTime = await new BN(startingTime).add(
+      new BN(days).mul(secondsInDayBN)
+    );
+    assert.equal(
+      contractEndTime.toString(),
+      expectedEndTime.toString(),
+      "Wrong contract end time"
+    );
   });
 });

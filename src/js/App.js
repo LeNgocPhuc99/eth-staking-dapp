@@ -80,7 +80,6 @@ function App() {
         );
         setTokenFarmContract(tokenFarmContract);
         const owner = await tokenFarmContract.methods.owner().call();
-        console.log(owner);
         setOwner(owner);
       } else {
         window.alert("TokenFarm contract not deployed to detected network");
@@ -118,7 +117,9 @@ function App() {
 
   async function refreshUserInfo() {
     setLoading(true);
-    let res = await tokenFarmContract.methods.getUserInfo().call({from: accounts[0]});
+    let res = await tokenFarmContract.methods
+      .getUserInfo()
+      .call({ from: accounts[0] });
     let depBalance = await daiTokenContract.methods
       .balanceOf(accounts[0])
       .call({ from: accounts[0] });
@@ -133,12 +134,16 @@ function App() {
       .call({ from: accounts[0] });
 
     let userInfo = {
-      deposited: web3.utils.fromWei(res),
+      deposited: web3.utils.fromWei(res["_deposited"]),
+      rewardPerDay: (res["_rewardPerSecond"] * 24 * 60 * 60) / 10 ** 18,
+      daysLeft: res["_secondsLeft"] / 60 / 60 / 24,
       depositTokenBalance: web3.utils.fromWei(depBalance),
       rewardTokenBalance: web3.utils.fromWei(rewardBalance),
       depSymbol: depSymbol,
       rewSymbol: rewSymbol,
     };
+
+    console.log(userInfo);
 
     setUserInfo(userInfo);
     setLoading(false);
@@ -149,6 +154,10 @@ function App() {
     if (e.target.value === "" || re.test(e.target.value)) {
       f(e.target.value);
     }
+  }
+
+  function isNonZeroNumber(_input) {
+    return _input !== undefined && _input !== "" && parseFloat(_input) !== 0.0;
   }
 
   const MainView = () => (
@@ -174,13 +183,20 @@ function App() {
     return (
       <div className="outerApp">
         <BlockchainContext.Provider
-          value={{ web3, accounts, tokenFarmContract, dappTokenContract, daiTokenContract }}
+          value={{
+            web3,
+            accounts,
+            tokenFarmContract,
+            dappTokenContract,
+            daiTokenContract,
+          }}
         >
           <DisplayContext.Provider
             value={{
-              onInputNumberChange,
               userInfo,
-              refreshUserInfo
+              refreshUserInfo,
+              onInputNumberChange,
+              isNonZeroNumber,
             }}
           >
             <DappNavar />
@@ -189,10 +205,14 @@ function App() {
               {web3 ? (
                 <MainView />
               ) : (
-                <div>
+                <>
                   <br />
-                  <Button onClick={connectToBlockchain}>Connect</Button>
-                </div>
+                  <div className="button-stretch">
+                    <Button variant="success" onClick={connectToBlockchain}>
+                      Connect
+                    </Button>
+                  </div>
+                </>
               )}
             </div>
           </DisplayContext.Provider>

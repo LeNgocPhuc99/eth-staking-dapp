@@ -150,7 +150,11 @@ contract TokenFarm {
     //     }
     // }
 
-    function getUserInfo() external view returns(uint256 _deposited) {
+    function getUserInfo() external view returns(uint256 _rewardPerSecond, uint256 _secondsLeft, uint256 _deposited) {
+        if(block.timestamp <= rewardPeriodEndTimestamp) {
+            _secondsLeft = rewardPeriodEndTimestamp.sub(block.timestamp);
+            _rewardPerSecond = rewardPerSecond.div(1e7);
+        }
         _deposited = users[msg.sender].deposited;
     }
 }

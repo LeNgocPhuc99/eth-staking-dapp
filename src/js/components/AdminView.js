@@ -16,12 +16,23 @@ function AdminView() {
   const [inputDuration, setInputDuration] = useState("");
 
   async function addRewards() {
-    let amount = web3.utils.toWei(inputRewards);
+    if(parseFloat(rewardsAmount) > parseFloat(userInfo["rewardTokenBalance"])) {
+      window.alert("Not enough balance");
+      return;
+    }
+
+    let amount = web3.utils.toWei(rewardsAmount);
     let days = inputDuration;
-    console.log(tokenFarmContract);
-    console.log(dappTokenContract);
-    console.log(amount);
-    console.log(days);
+    
+    await dappTokenContract.methods
+      .approve(tokenFarmContract.options.address, amount.toString())
+      .send({ from: accounts[0] });
+
+    await tokenFarmContract.methods
+      .addRewards(amount.toString(), days)
+      .send({ from: accounts[0] });
+
+    await refreshUserInfo();
   }
 
   return (

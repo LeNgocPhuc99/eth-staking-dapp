@@ -43,6 +43,11 @@ function UserView() {
     await refreshUserInfo();
   }
 
+  async function claim() {
+    await tokenFarmContract.methods.claim().send({ from: accounts[0] });
+    await refreshUserInfo();
+  }
+
   const CardKeyValue = (props) => (
     <>
       <div className="card-key-value">
@@ -121,8 +126,7 @@ function UserView() {
         <br />
 
         <div className="label-above-button">
-          You staked: {" "}
-          {userInfo["deposited"]} {userInfo["depSymbol"]}
+          You staked: {userInfo["deposited"]} {userInfo["depSymbol"]}
         </div>
         <div className="input-button-container">
           <div>
@@ -143,7 +147,9 @@ function UserView() {
 
         <br />
         <div className="button-stretch">
-          <Button variant="success">CLAIM REWARD</Button>
+          <Button onClick={claim} variant="success">
+            CLAIM REWARD
+          </Button>
         </div>
       </Container>
     </>

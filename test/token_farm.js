@@ -88,11 +88,19 @@ contract("TokenFarm", async (accounts) => {
     await dappToken.transfer(accounts[0], tokens("1000000"));
     await daiToken.transfer(accounts[1], tokens("100"), defaultOptions);
 
+    let prevUserBalance = await dappToken.balanceOf(accounts[1], {
+      from: accounts[1],
+    });
+
     // add rewards
     let rewardAmount = tokens("300");
     let days = 30;
     await dappToken.approve(tokenFarm.address, rewardAmount, defaultOptions);
     await tokenFarm.addRewards(rewardAmount, days, defaultOptions);
+    let preContractRewardBalance = await dappToken.balanceOf(
+      tokenFarm.address,
+      { from: accounts[1] }
+    );
 
     let contractRps = await tokenFarm.rewardPerSecond.call(defaultOptions);
 
@@ -126,5 +134,34 @@ contract("TokenFarm", async (accounts) => {
       contractRps.div(rpsMultiplierBN),
       "Wrong pending reward"
     );
+
+    // claim reward
+    await tokenFarm.claim({ from: accounts[1] });
+
+    // check user rewards balance
+    let userBalance = await dappToken.balanceOf(accounts[1], {
+      from: accounts[1],
+    });
+    let delta = userBalance.sub(prevUserBalance);
+    assertEqualWithMargin(
+      delta,
+      expectedPendingReward,
+      contractRps.div(rpsMultiplierBN),
+      "Wrong amount of reward"
+    );
+    prevUserBalance = userBalance;
+
+    // check TokenFarm rewards balance
+    let contractBalance = await dappToken.balanceOf(tokenFarm.address, {
+      from: accounts[1],
+    });
+    let contractDelta = preContractRewardBalance.sub(contractBalance);
+    assertEqualWithMargin(
+      contractDelta,
+      expectedPendingReward,
+      contractRps.div(rpsMultiplierBN),
+      "contract lost different amount of reward"
+    );
+    preContractRewardBalance = contractBalance;
   });
 });

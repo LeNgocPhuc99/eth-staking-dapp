@@ -146,36 +146,62 @@ contract TokenFarm {
         emit Deposit(msg.sender, _amount);
     }
 
-    // Unstaking Tokens (Withdraw)
-    function unstakeTokens() public {
-        // // get staking balance for user
-        // uint256 balance = stakingBalance[msg.sender];
-        // // balance must more than 0
-        // require(balance > 0, "staking balance cannot be 0");
-        // // transfer staked tokens back to user
-        // daiToken.transfer(msg.sender, balance);
-        // totalStaked = totalStaked - balance;
-        // // reseting user staking balance
-        // stakingBalance[msg.sender] = 0;
-        // // updating staking status
-        // isStaking[msg.sender] = false;
+    // withdraw
+    function withdraw(uint256 _amount) external {}
+
+    // claim reward
+    function claim() external {
+        UserInfo storage user = users[msg.sender];
+        if (user.deposited == 0) {
+            return;
+        }
+        updateRewards();
+        uint256 pendingReward = user
+            .deposited
+            .mul(accumulatedRewardPerShare)
+            .div(1e12)
+            .div(1e7)
+            .sub(user.rewardsAlreadyConsidered);
+        require(
+            dappToken.transfer(msg.sender, pendingReward),
+            "TokenFarm: transfer failed"
+        );
+        emit ClaimReward(msg.sender, pendingReward);
+        user.rewardsAlreadyConsidered = user
+            .deposited
+            .mul(accumulatedRewardPerShare)
+            .div(1e12)
+            .div(1e7);
     }
 
-    function pendingRewards(address _user) public view returns(uint256) {
+    function pendingRewards(address _user) public view returns (uint256) {
         UserInfo storage user = users[_user];
         uint256 accumulated = accumulatedRewardPerShare;
-        if (block.timestamp > lastRewardTimestamp && lastRewardTimestamp <= rewardPeriodEndTimestamp && totalStaked != 0) {
+        if (
+            block.timestamp > lastRewardTimestamp &&
+            lastRewardTimestamp <= rewardPeriodEndTimestamp &&
+            totalStaked != 0
+        ) {
             uint256 endingTime;
             if (block.timestamp > rewardPeriodEndTimestamp) {
                 endingTime = rewardPeriodEndTimestamp;
             } else {
                 endingTime = block.timestamp;
             }
-            uint256 secondsSinceLastRewardUpdate = endingTime.sub(lastRewardTimestamp);
-            uint256 totalNewReward = secondsSinceLastRewardUpdate.mul(rewardPerSecond);
-            accumulated = accumulated.add(totalNewReward.mul(1e12).div(totalStaked));
+            uint256 secondsSinceLastRewardUpdate = endingTime.sub(
+                lastRewardTimestamp
+            );
+            uint256 totalNewReward = secondsSinceLastRewardUpdate.mul(
+                rewardPerSecond
+            );
+            accumulated = accumulated.add(
+                totalNewReward.mul(1e12).div(totalStaked)
+            );
         }
-        return user.deposited.mul(accumulated).div(1e12).div(1e7).sub(user.rewardsAlreadyConsidered);  
+        return
+            user.deposited.mul(accumulated).div(1e12).div(1e7).sub(
+                user.rewardsAlreadyConsidered
+            );
     }
 
     function getUserInfo()

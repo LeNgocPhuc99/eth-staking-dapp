@@ -106,6 +106,14 @@ function UserView() {
           <RewardsFinished />
         )}
         <CardKeyValue
+          label={"Your reward balance: "}
+          value={
+            numberToFixed(userInfo["rewardTokenBalance"]) +
+            " " +
+            userInfo["rewSymbol"]
+          }
+        />
+        <CardKeyValue
           label={"Your staked:"}
           value={
             numberToFixed(userInfo["deposited"]) + " " + userInfo["depSymbol"]
